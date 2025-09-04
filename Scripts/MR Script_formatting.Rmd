@@ -1,0 +1,132 @@
+---
+title: "Causal inference analysis of the effect of beta-amyloid and tau proteins on dementia risk: Mendelian randomization analysis"
+author: "Jacob Apibilla Ayembilla, Rachael Osemudiamen Osagie, Adeyemi Timothy Akinade, Oumar Sako, Oluwafunmbi Ebenezer Ogunmiluyi, Olaitan I. Awe"
+date: "22nd February, 2025 - 30th June, 2025"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+```
+
+
+## R Markdown
+
+# Install and load libraries
+```{r, echo=FALSE}
+
+# Install TwoSampleMR package
+
+#install.packages('plyr', repos = "http://cran.us.r-project.org")
+#remotes::install_github("MRCIEU/TwoSampleMR")
+#if (!requireNamespace("remotes")) install.packages("remotes")
+#remotes::install_github("MRCIEU/ieugwasr", force = TRUE)
+#remotes::install_github("MRCIEU/MRInstruments")
+
+library(TwoSampleMR)
+library(ieugwasr)
+library(MRInstruments)
+```
+
+# Set up link to plink
+```{r}
+plink_bin <- "C:/Users/AFOS/plink/plink.exe"  # Use forward slashes
+system(paste(plink_bin, "--help"))
+```
+
+
+## Load exposure dataset
+```{r pressure, echo=FALSE}
+library(data.table) 
+PLMCL <- fread("path/your_data", nThread = 4, showProgress = TRUE)
+```
+
+
+# Exposure
+# Extract significant snps at desired threshold pvalue < 5e-5
+```{r}
+# Pvalue threshold of 5e-8 was used because the sample size was small
+PLMCL_sig <- subset(PLMCL, PLMCL$p_value<5e-5)
+
+PLMCL_sig$phenotype <- "Plasma cells"
+
+n <- "sample size"
+exp_PLMCL_sig <- format_data(as.data.frame(PLMCL_sig),
+    type = "exposure",
+    snp_col = "rsid",                   # Corresponds to "rsids"
+    beta_col = "beta",                        # Corresponds to "beta"
+    se_col = "standard_error",                # Corresponds to "sebeta"
+    effect_allele_col = "allele_alt",      # Corresponds to "alt"
+    other_allele_col = "allele_ref",        # Corresponds to "ref"
+    eaf_col = "allele_frequency",      # Corresponds to "af"
+    pval_col = "p_value",                     # Corresponds to "pval"
+    phenotype_col = "phenotype",              # Corresponds to "phenotype"
+    samplesize_col = "n"                      # Ensure a "n" column exists if required
+)
+```
+
+
+## DETERMINING VARIANCE EXPLAINED BY INSTRUMENTAL VARIABLES
+The F-statistic is calculated to determine if the instrumental variables explain a substantial proportion of the variance in the exposure and that the MR study has enough power to detect a causal effect of the exposure on the outcome. 
+
+# Calc MAF and F-Statistic
+```{r}
+# Extract effect allele and minor allele frequencies
+exp_PLMCL_sig$EAF2 <- (1 - exp_PLMCL_sig$eaf.exposure)
+
+# Calculate MAF
+exp_PLMCL_sig$MAF <- pmin(exp_PLMCL_sig$eaf.exposure, exp_PLMCL_sig$EAF2)
+
+#Calculate F-Statistic
+EAF <- exp_PLMCL_sig$eaf.exposure
+beta <- exp_PLMCL_sig$beta.exposure
+se <- exp_PLMCL_sig$se.exposure
+N = n
+
+R = (2 * EAF * (1 - EAF) * beta^2)/((2 * EAF * (1 - EAF) * beta^2) + (2 * EAF * (1 - EAF) * n * se^2))
+
+exp_PLMCL_sig$F <- R*(n-2)/(1-R)
+```
+
+# Filter SNPs with and MAF > 0.01 and F-statistic >=10
+```{r}
+library(dplyr)
+
+exp_PLMCL_sig_f <- exp_PLMCL_sig %>%
+  filter(MAF > 0.01, F > 10)
+```
+
+
+# 
+# Load data outcome dataset
+```{r}
+library(data.table)
+# Load data
+Ab42 <- fread("path/your_data", nThread = 4, showProgress = TRUE)
+```
+
+
+# Format outcome data
+```{r}
+# Create ID, phenotype and sample size
+Ab42$phenotype <- "phenotype"
+Ab42$n <- "sample size"
+
+# Format the data
+Ab42_f <- format_data(
+    Ab42,
+    type = "outcome",
+    snp_col = "RefSNP_id",         
+    beta_col = "beta",              
+    se_col = "se",                  
+    effect_allele_col = "alt",  
+    other_allele_col =  "ref" , 
+    eaf_col = "af",
+    pval_col = "pvalue",            
+    phenotype_col = "phenotype",
+    samplesize_col= "n" 
+)
+```
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>

@@ -1,0 +1,67 @@
+---
+title: "Causal inference analysis of the effect of beta-amyloid and tau proteins on dementia risk: Mendelian randomization analysis"
+author: "Jacob Apibilla Ayembilla, Rachael Osemudiamen Osagie, Adeyemi Timothy Akinade, Oumar Sako, Oluwafunmbi Ebenezer Ogunmiluyi, Olaitan I. Awe"
+date: "22nd February, 2025 - 30th June, 2025"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Clump SNPs locally
+```{r}
+clump_PLMCL <- exp_PLMCL_sig_f[, c("SNP", "pval.exposure")]  # Copy existing data
+colnames(clump_PLMCL) <- c("SNP", "P")  # Ensure PLINK-compatible names
+ 
+# Save the file in the correct format
+write.table(clump_PLMCL, "clump_PLMCL.txt", row.names = FALSE, col.names = TRUE, quote = FALSE, sep = "\t")
+```
+
+```{r}
+plink_bin <- "C:/Users/AFOS/plink/plink.exe"  # Use forward slashes
+system(paste(plink_bin, "--help"))
+```
+
+```{r}
+system(paste0(
+  plink_bin, " --bfile data_maf0.01_rs_ref ",
+  "--clump clump_PLMCL.txt ",
+  "--clump-p1 5e-5 ",       # P-value threshold for clumping
+  "--clump-r2 0.001 ",      # LD threshold
+  "--clump-kb 10000 ",      # Clumping window size
+  "--out clumped_snps_PLMCL"
+))
+```
+
+# Extract snps
+```{r}
+clumped_snps_PLMCL <- read.table("clumped_snps_PLMCL.clumped", header = TRUE, stringsAsFactors = FALSE)
+clumped_snp_list_PLMCL <- unique(clumped_snps_PLMCL$SNP)  # Extract unique SNPs
+```
+
+# Filter and keep only clump snps
+```{r}
+# Keep only clumped SNPs
+clumped_PLMCL <- exp_PLMCL_sig_f[exp_PLMCL_sig_f$SNP %in% clumped_snp_list_PLMCL, , drop = FALSE]
+```
+
+
+# Match SNPs between exposure and outcome before harmonization
+```{r}
+snps_PLMCL <- exp_PLMCL_sig_f[exp_PLMCL_sig_f$SNP %in% clumped_PLMCL$SNP, ]
+```
+
+
+# Harmonize the clumped data with outcome data
+```{r}
+harmonized_PLMCL <- harmonise_data(snps_PLMCL, Ab42_f, action=3) 
+head(harmonized_PLMCL) 
+```
+
+# Remove palindromic snps
+```{r}
+harmonized_PLMCL_Ab42_clean <- harmonized_PLMCL[!(harmonized_PLMCL$palindromic & harmonized_PLMCL$ambiguous), ]
+```
+

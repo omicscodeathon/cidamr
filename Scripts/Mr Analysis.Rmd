@@ -1,0 +1,179 @@
+---
+title: "Causal inference analysis of the effect of beta-amyloid and tau proteins on dementia risk: Mendelian randomization analysis"
+author: "Jacob Apibilla Ayembilla, Rachael Osemudiamen Osagie, Adeyemi Timothy Akinade, Oumar Sako, Oluwafunmbi Ebenezer Ogunmiluyi, Olaitan I. Awe"
+date: "22nd February, 2025 - 30th June, 2025"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## PRIMARY MR ANALYSIS
+This  includes single SNP analysis using the inverse variance weighted method followed by an all SNPs analysis using the same method and then analysis using each of three other methods including the MR-Egger, Weighted median and Weighted mode. The 'generate_odds_ratios' function computes odds ratios and their corresponding confidence intervals for effects measured by each of the MR analysis methods.
+
+# Perform MR analysis
+```{r}
+mr_PLMCL_Ab42 <- mr(harmonized_PLMCL_Ab42_clean)
+mr_PLMCL_Ab42
+```
+
+
+## SENSITIVITY ANALYSES
+In order to assess the validity of the causal inference made from the instrumental variable analyses above and to provide a more robust and reliable estimates,  several other sensitivity analyses were performed. Pleiotropy and heterogeneity tests for the main analysis and for each of the other analyses are also done as detailed below.
+
+## Pleiotropy and heterogeneity test for main analysis
+The 'mr_pleiotropy_test' method performs MR-Egger and returns intercept values while 
+'mr_heterogeneity' calculates Cochran's Q statistic and its corresponding p-value as measures of heterogeneity.
+```{r Sensitivity analysis for all snps, include=TRUE}
+#pleiotropy
+ple_PLMCL <- mr_pleiotropy_test(harmonized_PLMCL_Ab42_clean)
+
+#heterogeneity
+het_PLMCL <- mr_heterogeneity(harmonized_PLMCL_Ab42_clean)
+```
+
+# Save pleiotropy and heterogeneity 
+```{r}
+write.csv(ple_PLMCL, "PLMCL_Ab42_pleiotropy.csv")
+
+write.csv(het_PLMCL, "PLMCL_Ab42_Heterogeneity.csv")
+```
+
+# MR-PRESSO global method
+```{r}
+library(MRPRESSO)
+# Run MR-PRESSO global method
+mrpresso_PLMCL <- mr_presso(
+  BetaOutcome = "beta.outcome",
+  BetaExposure = "beta.exposure",
+  SdOutcome = "se.outcome",
+  SdExposure = "se.exposure",
+  OUTLIERtest = TRUE,
+  DISTORTIONtest = TRUE,
+  data = harmonized_PLMCL_Ab42_clean,
+  NbDistribution = 2000,
+  SignifThreshold = 0.05
+)
+```
+
+# Save mrpresso results
+```{r}
+write.csv(mrpresso_PLMCL, "PLMCL_Ab42_mrpresso_results.csv")
+```
+
+
+# Single snps MR, all SNPs and odd ratios
+```{r Main MR, include=TRUE}
+# MR analysis with all 4 methods
+mr_PLMCL_Chol <- mr(harmonized_PLMCL_Ab42_clean, 
+                   method_list = c("mr_ivw","mr_egger_regression", "mr_weighted_median", "mr_weighted_mode", "mr_simple_mode"))
+
+# Generate odds ratios and confidence intervals
+mr_res_ORs_PLMCL_Chol <- generate_odds_ratios(mr_PLMCL_Chol)
+```
+
+# Save MR results
+```{r}
+# Save mr results
+write.csv(mr_res_ORs_PLMCL_Ab42, "PLMCL_Ab42_mr_Odd.csv")
+write.csv(mr_PLMCL_Ab42, "PLMCL_Ab42_mr_results.csv")
+```
+
+# Leave one out analysis
+```{r}
+res_loo1 <- mr_leaveoneout(harmonized_PLMCL_Ab42_clean)
+
+#save plot
+png("PLMCL_Ab42_leaveoneout_plot.png", width = 800, height = 600)
+
+leaveoneout <- mr_leaveoneout_plot(res_loo1)
+c <- leaveoneout[[1]]
+c
+```
+
+
+# Scatter plot
+```{r}
+# Perform MR analysis
+res <- mr(harmonized_PLMCL_Ab42_clean)
+
+#save plot
+png("PLMCL_Ab42_scatterplot.png", width = 800, height = 600)
+
+# Plot a scatter plot
+scatterplot <- mr_scatter_plot(res, harmonized_PLMCL_Ab42_clean)
+
+# Display the plot
+a <- scatterplot[[1]]
+a
+```
+
+
+```{r}
+res_single <- mr_singlesnp(harmonized_PLMCL_Ab42_clean, all_method = c("mr_ivw", "mr_two_sample_ml", "mr_weighted_median"))
+
+#save plot
+png("PLMCL_Ab42_forest_plot.png", width = 800, height = 600)
+
+forestplot <- mr_forest_plot(res_single)
+b <- forestplot[[1]]
+b
+```
+
+# Funnel plot
+```{r}
+res_single <- mr_singlesnp(harmonized_PLMCL_Chol_clean)
+
+#save plot
+png("PLMCL_Ab42_funnel_plot.png", width = 800, height = 600)
+
+funnelplot <- mr_funnel_plot(res_single)
+d <- funnelplot[[1]]
+d
+```
+
+
+# Radial MR
+```{r}
+#devtools::install_github("WSpiller/RadialMR")  # Install RadialMR package
+library(RadialMR)
+library(TwoSampleMR)
+```
+
+```{r}
+library(dplyr)
+radial_data <- harmonized_PLMCL_Ab42_clean |> 
+  select(SNP, 
+         beta.exposure, 
+         beta.outcome, 
+         se.exposure, 
+         se.outcome)
+```
+
+# Fit radial IVW model
+```{r}
+ivw.model<-ivw_radial(harmonized_PLMCL_Ab42_clean, 0.05/nrow(harmonized_PLMCL_Ab42_clean), 3, 0.0001)
+```
+
+#Extract outliers after radial ivw
+```{r}
+ivw.model$outliers
+```
+
+# Fitting a Radial MR Egger model
+```{r}
+egger.model<-egger_radial(harmonized_PLMCL_Ab42_clean,0.05/nrow(harmonized_PLMCL_Ab42_clean),3)
+```
+
+# Extract outlier after radial Egger method
+```{r}
+egger.model$outliers
+```
+
+```{r}
+#save plot
+png("PLMCL_Ab42_Radial_plot.png", width = 800, height = 600)
+IVWplot1<-plot_radial(ivw.model,T,F,F)
+IVWplot1 
+``` 
