@@ -17,7 +17,10 @@ The aim of the study was to examine the causal effect of CSF and plasma Aβ, cir
 
 #### Study Design
 This study employed a causal inference analysis using Mendelian Randomization (MR) approach to examine the causal role of CSF and plasma Aβ, t-tau and p-tau proteins on dementia risk among individuals of European Ancestry. The study sourced publicly available genome wide association studies (GWAS) summary statistics from the GWAS catalog, OpenGWAS catalog and the FINNGEN databases for this analysis. Figure 1 is a schematic representation of the MR approach. The genetic instruments selected for the analysis were relevanto to the exposures, independent of confounders and exclusively were assoicated with the outcomes. 
-![Schematic](https://github.com/JacobAyembilla/CSF-and-plasma-amyloid-t-tau-and-p-tau-and-dementia-risk-/blob/main/Screenshot%202025-08-18%20111206.png)
+<!--
+![Schematic](https://github.com/JacobAyembilla/CSF-and-plasma-amyloid-t-tau-and-p-tau-and-dementia-risk-/blob/main/Screenshot%202025-08-18%20111206.png) 
+-->
+![Schematic](fig/schematic.png)
 **Fig 1: Schematic representation of the causal effect of CSF and plasma amyloid, tau, and hyperphosphorylated tau proteins on dementia risk in European ancestry.**
 
 
@@ -47,8 +50,11 @@ The datasets fo this analysis were publicly available GWAS summary statistics fr
 
 #### Mendelian Randomization workflow
 In this study we followed the MR workflow illustrate to analysis the data
-
+<!--
 ![Workflow](https://github.com/JacobAyembilla/CSF-and-plasma-amyloid-t-tau-and-p-tau-and-dementia-risk-/blob/main/Screenshot%202025-08-18%20131228.png)
+-->
+
+![Workflow](fig/workflow_diagram.png)
 **Fig 2: Mendelian Randomization analysis workflow for the causal effect of CSF and plasma amyloid, t-tau, and p-tau on dementia risk in European Ancestry**
 
 #### Conclusion
